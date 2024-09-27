@@ -1,103 +1,37 @@
 import { useEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import {
-  format,
-  addDays,
-  addWeeks,
-  addMonths,
-  addYears,
-  eachDayOfInterval,
-  getDay,
-  getDate,
-  startOfMonth,
-  endOfMonth,
-  setDate,
-} from "date-fns";
+import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
 
-const MiniCalendar = ({
-  startDate,
-  endDate = null,
-  recurrenceType,
-  interval,
-  specificDays = [],
-  nthDayOfMonth = null,
-}) => {
+const MiniCalendar = ({ startDate, endDate, recurrenceType, interval }) => {
   const [recurringDates, setRecurringDates] = useState([]);
 
-  const calculateNthDayOfMonth = (nth, dayOfWeek, current) => {
-    const start = startOfMonth(current);
-    const end = endOfMonth(current);
-
-    let nthDay = null;
-    let count = 0;
-
-    for (let date = start; date <= end; date = addDays(date, 1)) {
-      if (getDay(date) === dayOfWeek) {
-        count++;
-        if (count === nth) {
-          nthDay = date;
-          break;
-        }
-      }
-    }
-
-    return nthDay ? setDate(current, getDate(nthDay)) : null;
-  };
-
+  // useCallback to prevent unnecessary re-renders
   const calculateRecurringDates = useCallback(() => {
     if (!startDate) return;
-
-    let dates = [];
     let current = new Date(startDate);
+    let dates = [];
 
     while (endDate ? current <= new Date(endDate) : dates.length < 30) {
-      if (recurrenceType === "monthly" && nthDayOfMonth) {
-        const nthDay = calculateNthDayOfMonth(
-          nthDayOfMonth.nth,
-          nthDayOfMonth.dayOfWeek,
-          current
-        );
-        if (nthDay) dates.push(new Date(nthDay));
-        current = addMonths(current, interval);
-      } else {
-        dates.push(new Date(current));
-
-        switch (recurrenceType) {
-          case "daily":
-            current = addDays(current, interval); // Every X days
-            break;
-          case "weekly":
-            current = addWeeks(current, interval); // Every X weeks
-            break;
-          case "monthly":
-            current = addMonths(current, interval); // Every X months
-            break;
-          case "yearly":
-            current = addYears(current, interval); // Every X years
-            break;
-          default:
-            return;
-        }
+      dates.push(new Date(current));
+      switch (recurrenceType) {
+        case "daily":
+          current = addDays(current, interval);
+          break;
+        case "weekly":
+          current = addWeeks(current, interval);
+          break;
+        case "monthly":
+          current = addMonths(current, interval);
+          break;
+        case "yearly":
+          current = addYears(current, interval);
+          break;
+        default:
+          return;
       }
     }
-
-    // Handle specific days of the week for weekly recurrence
-    if (recurrenceType === "weekly" && specificDays.length > 0) {
-      dates = eachDayOfInterval({
-        start: new Date(startDate),
-        end: new Date(endDate),
-      }).filter((date) => specificDays.includes(getDay(date)));
-    }
-
     setRecurringDates(dates);
-  }, [
-    startDate,
-    endDate,
-    recurrenceType,
-    interval,
-    specificDays,
-    nthDayOfMonth,
-  ]);
+  }, [startDate, endDate, recurrenceType, interval]);
 
   useEffect(() => {
     calculateRecurringDates();
@@ -108,14 +42,20 @@ const MiniCalendar = ({
       <h3 className="text-xl font-semibold text-yellow-600 mb-4">
         Mini Calendar
       </h3>
-      {recurringDates.map((date, index) => (
-        <div
-          key={index}
-          className="text-black calendar-date text-center py-2 border border-gray-200 rounded-md hover:bg-blue-100 transition duration-200"
-        >
-          {format(new Date(date), "MM/dd/yyyy")}
+      {recurringDates.length > 0 ? (
+        recurringDates.map((date, index) => (
+          <div
+            key={index}
+            className="text-black text-center py-2 border border-gray-200 rounded-md hover:bg-blue-100 transition duration-200"
+          >
+            {format(new Date(date), "dd/MM/yyyy")}
+          </div>
+        ))
+      ) : (
+        <div className="text-black text-center py-2 border border-gray-200 rounded-md hover:bg-blue-100 transition duration-200">
+          No recurring dates found
         </div>
-      ))}
+      )}
     </div>
   );
 };
@@ -126,11 +66,6 @@ MiniCalendar.propTypes = {
   recurrenceType: PropTypes.oneOf(["daily", "weekly", "monthly", "yearly"])
     .isRequired,
   interval: PropTypes.number.isRequired,
-  specificDays: PropTypes.arrayOf(PropTypes.number),
-  nthDayOfMonth: PropTypes.shape({
-    nth: PropTypes.number.isRequired,
-    dayOfWeek: PropTypes.number.isRequired,
-  }),
 };
 
 export default MiniCalendar;
